@@ -1,9 +1,10 @@
 import Image from "next/image";
+import Homer from '@/app/homer/page'
 
 export default function Home() {
   return (
   <div>
-    <h1>My app</h1>
+    <Homer/>
   </div>
   );
 }
