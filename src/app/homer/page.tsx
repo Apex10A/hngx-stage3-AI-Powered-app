@@ -1,14 +1,15 @@
 "use client"
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Maximize2, Minimize2, Copy, Volume2, Download, Share2 } from 'lucide-react';
+import { Send, Loader2, Copy, Volume2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import { Message } from './types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTranslator } from './useTranslator';
-import { useLanguageDetector } from './useLanguageDetector'; 
+import { useLanguageDetector } from './useLanguageDetector';
+import { useSummarizer } from './useSummarizer';
 
+// Define available languages
 const languages = [
   { code: 'en', name: 'English' },
   { code: 'pt', name: 'Portuguese' },
@@ -18,25 +19,47 @@ const languages = [
   { code: 'fr', name: 'French' },
 ];
 
+// Message interface
+interface Message {
+  id: string;
+  text: string;
+  detectedLanguage?: string;
+  detectedLanguageCode?: string;
+  translation?: string;
+  targetLanguage?: string;
+  summary?: string;
+  confidence?: number;
+}
+
 export default function Home() {
-    const { detectLanguage, isLoading: isDetectorLoading, error: detectorError } = useLanguageDetector();
-    const { translate, isLoading: isTranslating } = useTranslator();
+  // Custom hooks
+  const { detectLanguage, isLoading: isDetectorLoading } = useLanguageDetector();
+  const { translate, isLoading: isTranslating } = useTranslator();
+  const { summarize, isLoading: isSummarizing } = useSummarizer();
+
+  // State
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Show alert helper
+  const showAlertMessage = (message: string) => {
+    setAlertMessage(message);
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 2000);
+  };
+
+  // Handle sending a new message
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
@@ -44,44 +67,37 @@ export default function Home() {
     try {
       const languageResult = await detectLanguage(inputText.trim());
       
+      if (!languageResult) {
+        throw new Error('Language detection failed');
+      }
+
       const newMessage: Message = {
         id: nanoid(),
         text: inputText.trim(),
-        detectedLanguage: languageResult ? 
-          `${languages.find(l => l.code === languageResult.detectedLanguage)?.name || languageResult.detectedLanguage} (${(languageResult.confidence * 100).toFixed(1)}% confidence)` : 
-          'Language detection unavailable'
+        detectedLanguageCode: languageResult.detectedLanguage,
+        detectedLanguage: `${languages.find(l => l.code === languageResult.detectedLanguage)?.name || languageResult.detectedLanguage}`,
+        confidence: languageResult.confidence
       };
 
       setMessages(prev => [...prev, newMessage]);
+      setInputText('');
     } catch (error) {
       console.error('Error processing message:', error);
+      showAlertMessage('Error processing message');
     } finally {
       setIsLoading(false);
-      setInputText('');
     }
   };
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setShowAlert(true);
-    setTimeout(() => setShowAlert(false), 2000);
-  };
 
-  const handleTextToSpeech = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
+  // Handle translation
   const handleTranslate = async (messageId: string, targetLanguage: string) => {
     try {
       const message = messages.find(m => m.id === messageId);
-      if (!message) return;
-
-      const languageResult = await detectLanguage(message.text);
-      if (!languageResult) throw new Error('Could not detect source language');
+      if (!message || !message.detectedLanguageCode) return;
 
       const translation = await translate(
         message.text,
-        languageResult.detectedLanguage,
+        message.detectedLanguageCode,
         targetLanguage
       );
 
@@ -96,96 +112,103 @@ export default function Home() {
       ));
     } catch (error) {
       console.error('Translation error:', error);
-      setShowAlert(true);
-      setTimeout(() => setShowAlert(false), 2000);
+      showAlertMessage('Translation failed');
     }
   };
 
-  const exportChat = () => {
-    const chatData = JSON.stringify(messages, null, 2);
-    const blob = new Blob([chatData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chat-export.json';
-    a.click();
+  // Handle summarization
+  const handleSummarize = async (messageId: string) => {
+    try {
+      const message = messages.find(m => m.id === messageId);
+      if (!message) return;
+
+      const summary = await summarize(message.text);
+      if (summary) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, summary }
+            : msg
+        ));
+      }
+    } catch (error) {
+      console.error('Summarization error:', error);
+      showAlertMessage('Summarization failed');
+    }
+  };
+
+  // Copy text to clipboard
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showAlertMessage('Text copied to clipboard!');
+    } catch (error) {
+      showAlertMessage('Failed to copy text');
+    }
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      <main className={`flex flex-col h-screen max-w-6xl mx-auto ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+    <div className="min-h-screen bg-gray-50">
+      <main className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-display text-gray-800 dark:text-white">Multilingual Chat</h1>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="rounded-full"
-            >
-              {isDarkMode ? '🌞' : '🌙'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="rounded-full"
-            >
-              {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-            </Button>
-          </div>
+        <div className="border-b px-6 py-4">
+          <h1 className="text-2xl font-bold">AI Chat Processor</h1>
         </div>
 
         {/* Alert */}
         {showAlert && (
           <Alert className="fixed top-4 right-4 w-auto animate-in fade-in slide-in-from-top-2">
-            <AlertDescription>Text copied to clipboard!</AlertDescription>
+            <AlertDescription>{alertMessage}</AlertDescription>
           </Alert>
         )}
 
-        {/* Chat Area */}
+        {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((message) => (
-            <Card key={message.id} className="max-w-[85%] ml-auto transform transition-all hover:shadow-lg">
+            <Card key={message.id} className="max-w-[85%] ml-auto">
               <CardContent className="p-4 space-y-3">
-                {/* Message Content */}
+                {/* Message Text */}
                 <div className="flex justify-between items-start gap-4">
-                  <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
+                  <p className="text-gray-800 font-medium">
                     {message.text}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleCopy(message.text)}
-                      className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleTextToSpeech(message.text)}
-                      className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Volume2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCopy(message.text)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Language Info */}
+                {/* Language Detection Info */}
                 {message.detectedLanguage && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Detected: {message.detectedLanguage}
+                  <p className="text-sm text-gray-500">
+                    Detected: {message.detectedLanguage} 
+                    {message.confidence && ` (${(message.confidence * 100).toFixed(1)}% confidence)`}
                   </p>
                 )}
 
-                {/* Translation Controls */}
+                {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2 items-center">
+                  {/* Summarize Button - only for English text over 150 chars */}
+                  {message.text.length > 150 && 
+                   message.detectedLanguageCode === 'en' && 
+                   !message.summary && (
+                    <Button
+                      onClick={() => handleSummarize(message.id)}
+                      disabled={isSummarizing}
+                      variant="default"
+                      size="sm"
+                    >
+                      {isSummarizing ? 'Summarizing...' : 'Summarize'}
+                    </Button>
+                  )}
+
+                  {/* Language Selector */}
                   <select
-                    className="text-sm border rounded-full px-4 py-2 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
+                    className="text-sm border rounded px-3 py-1"
                     onChange={(e) => handleTranslate(message.id, e.target.value)}
+                    disabled={isTranslating}
                   >
                     <option value="">Translate to...</option>
                     {languages.map((lang) => (
@@ -196,13 +219,23 @@ export default function Home() {
                   </select>
                 </div>
 
+                {/* Summary Display */}
+                {message.summary && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Summary:
+                    </p>
+                    <p className="text-gray-600">{message.summary}</p>
+                  </div>
+                )}
+
                 {/* Translation Display */}
                 {message.translation && (
-                  <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
                       Translation ({message.targetLanguage}):
                     </p>
-                    <p className="text-gray-600 dark:text-gray-400">{message.translation}</p>
+                    <p className="text-gray-600">{message.translation}</p>
                   </div>
                 )}
               </CardContent>
@@ -212,8 +245,8 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t bg-white dark:bg-gray-800 p-6">
-          <div className="flex gap-3 max-w-4xl mx-auto">
+        <div className="border-t p-6">
+          <div className="flex gap-3">
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -224,29 +257,20 @@ export default function Home() {
                 }
               }}
               placeholder="Type your message..."
-              className="flex-1 resize-none rounded-xl border border-gray-200 dark:border-gray-700 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-200 font-medium"
+              className="flex-1 resize-none rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={2}
             />
-            <div className="flex flex-col gap-2">
-              <Button
-                onClick={handleSend}
-                disabled={isLoading || !inputText.trim()}
-                className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl p-3 transition-all"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
-              </Button>
-              <Button
-                onClick={exportChat}
-                variant="ghost"
-                className="rounded-xl"
-              >
-                <Download className="w-5 h-5" />
-              </Button>
-            </div>
+            <Button
+              onClick={handleSend}
+              disabled={isLoading || !inputText.trim()}
+              className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl p-3"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
           </div>
         </div>
       </main>

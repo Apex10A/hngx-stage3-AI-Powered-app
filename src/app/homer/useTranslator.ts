@@ -15,6 +15,7 @@ export function useTranslator() {
   const createTranslator = async (sourceLanguage: string, targetLanguage: string) => {
     if (!('ai' in window && 'translator' in (window as any).ai)) {
       throw new Error('Translation API is not available in this browser');
+      console.log("no")
     }
 
     const capabilities = await (window as any).ai.translator.capabilities();
