@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useTranslator } from './useTranslator';
 import { useLanguageDetector } from './useLanguageDetector';
 import { useSummarizer } from './useSummarizer';
+import "../../main.css"
 
 // Define available languages
 const languages = [
@@ -31,6 +32,15 @@ interface Message {
   confidence?: number;
 }
 
+// Welcome message
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome',
+  text: "👋 Hello! I'm your AI language assistant. I can help you with:\n• Detecting languages\n• Translating text\n• Summarizing English content over 150 characters\n\nFeel free to type your message below to get started!",
+  detectedLanguage: 'English',
+  detectedLanguageCode: 'en',
+  confidence: 1
+};
+
 export default function Home() {
   // Custom hooks
   const { detectLanguage, isLoading: isDetectorLoading } = useLanguageDetector();
@@ -43,9 +53,20 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Show welcome message on first visit
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('hasVisited');
+    if (!hasVisited && !hasShownWelcome) {
+      setMessages([WELCOME_MESSAGE]);
+      setHasShownWelcome(true);
+      localStorage.setItem('hasVisited', 'true');
+    }
+  }, [hasShownWelcome]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -65,6 +86,11 @@ export default function Home() {
 
     setIsLoading(true);
     try {
+      // Remove welcome message if it's the first user message
+      if (messages.length === 1 && messages[0].id === 'welcome') {
+        setMessages([]);
+      }
+
       const languageResult = await detectLanguage(inputText.trim());
       
       if (!languageResult) {
@@ -164,24 +190,26 @@ export default function Home() {
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((message) => (
-            <Card key={message.id} className="max-w-[85%] ml-auto">
+            <Card key={message.id} className={`max-w-[85%] ${message.id === 'welcome' ? 'mx-auto bg-blue-50' : 'ml-auto'}`}>
               <CardContent className="p-4 space-y-3">
                 {/* Message Text */}
                 <div className="flex justify-between items-start gap-4">
-                  <p className="text-gray-800 font-medium">
+                  <p className="text-gray-800 font-medium whitespace-pre-line">
                     {message.text}
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleCopy(message.text)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  {message.id !== 'welcome' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopy(message.text)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* Language Detection Info */}
-                {message.detectedLanguage && (
+                {message.detectedLanguage && message.id !== 'welcome' && (
                   <p className="text-sm text-gray-500">
                     Detected: {message.detectedLanguage} 
                     {message.confidence && ` (${(message.confidence * 100).toFixed(1)}% confidence)`}
@@ -189,35 +217,37 @@ export default function Home() {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  {/* Summarize Button - only for English text over 150 chars */}
-                  {message.text.length > 150 && 
-                   message.detectedLanguageCode === 'en' && 
-                   !message.summary && (
-                    <Button
-                      onClick={() => handleSummarize(message.id)}
-                      disabled={isSummarizing}
-                      variant="default"
-                      size="sm"
-                    >
-                      {isSummarizing ? 'Summarizing...' : 'Summarize'}
-                    </Button>
-                  )}
+                {message.id !== 'welcome' && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {/* Summarize Button - only for English text over 150 chars */}
+                    {message.text.length > 150 && 
+                     message.detectedLanguageCode === 'en' && 
+                     !message.summary && (
+                      <Button
+                        onClick={() => handleSummarize(message.id)}
+                        disabled={isSummarizing}
+                        variant="default"
+                        size="sm"
+                      >
+                        {isSummarizing ? 'Summarizing...' : 'Summarize'}
+                      </Button>
+                    )}
 
-                  {/* Language Selector */}
-                  <select
-                    className="text-sm border rounded px-3 py-1"
-                    onChange={(e) => handleTranslate(message.id, e.target.value)}
-                    disabled={isTranslating}
-                  >
-                    <option value="">Translate to...</option>
-                    {languages.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    {/* Language Selector */}
+                    <select
+                      className="text-sm border rounded px-3 py-1"
+                      onChange={(e) => handleTranslate(message.id, e.target.value)}
+                      disabled={isTranslating}
+                    >
+                      <option value="">Translate to...</option>
+                      {languages.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Summary Display */}
                 {message.summary && (
