@@ -37,7 +37,7 @@ const LandingPage = () => {
       transition: {
         duration: 3,
         repeat: Infinity,
-        repeatType: "reverse",
+        repeatType: "reverse" as const,
         ease: "easeInOut"
       }
     }
