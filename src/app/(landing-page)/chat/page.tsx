@@ -10,7 +10,7 @@ import { useLanguageDetector } from './useLanguageDetector';
 import { useSummarizer } from './useSummarizer';
 import "../../main.css"
 
-// Define available languages
+// Define available languages (same as before)
 const languages = [
   { code: 'ar', name: 'Arabic' },
   { code: 'bg', name: 'Bulgarian' },
@@ -47,10 +47,8 @@ const languages = [
   { code: 'vi', name: 'Vietnamese' },
   { code: 'zh', name: 'Chinese (Simplified)' },
   { code: 'zh-Hant', name: 'Chinese (Traditional)' }
-
 ];
 
-// Message interface
 interface Message {
   id: string;
   text: string;
@@ -62,7 +60,6 @@ interface Message {
   confidence?: number;
 }
 
-// Welcome message
 const WELCOME_MESSAGE: Message = {
   id: 'welcome',
   text: "👋 Hello! I'm your AI language assistant. I can help you with:\n• Detecting languages\n• Translating text\n• Summarizing English content over 150 characters\n\nFeel free to type your message below to get started!",
@@ -72,23 +69,21 @@ const WELCOME_MESSAGE: Message = {
 };
 
 export default function Home() {
-  // Custom hooks
   const { detectLanguage, isLoading: isDetectorLoading } = useLanguageDetector();
   const { translate, isLoading: isTranslating } = useTranslator();
   const { summarize, isLoading: isSummarizing } = useSummarizer();
 
-  // State
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [textareaHeight, setTextareaHeight] = useState('80px');
   
-  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Show welcome message on first visit
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
     if (!hasVisited && !hasShownWelcome) {
@@ -98,25 +93,31 @@ export default function Home() {
     }
   }, [hasShownWelcome]);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Show alert helper
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '80px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = scrollHeight + 'px';
+      setTextareaHeight(`${Math.min(scrollHeight, 200)}px`);
+    }
+  }, [inputText]);
+
   const showAlertMessage = (message: string) => {
     setAlertMessage(message);
     setShowAlert(true);
     setTimeout(() => setShowAlert(false), 2000);
   };
 
-  // Handle sending a new message
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
     setIsLoading(true);
     try {
-      // Remove welcome message if it's the first user message
       if (messages.length === 1 && messages[0].id === 'welcome') {
         setMessages([]);
       }
@@ -145,7 +146,6 @@ export default function Home() {
     }
   };
 
-  // Handle translation
   const handleTranslate = async (messageId: string, targetLanguage: string) => {
     try {
       const message = messages.find(m => m.id === messageId);
@@ -172,7 +172,6 @@ export default function Home() {
     }
   };
 
-  // Handle summarization
   const handleSummarize = async (messageId: string) => {
     try {
       const message = messages.find(m => m.id === messageId);
@@ -192,7 +191,6 @@ export default function Home() {
     }
   };
 
-  // Copy text to clipboard
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -204,33 +202,37 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
+      <main className="flex flex-col h-screen mx-auto bg-white md:max-w-4xl lg:max-w-6xl">
         {/* Header */}
-        <div className="border-b px-6 py-4">
-          <h1 className="text-2xl font-bold">AI Chat Processor</h1>
+        <div className="border-b px-4 sm:px-6 py-3 sm:py-4">
+          <h1 className="text-xl sm:text-2xl font-bold">AI Chat Processor</h1>
         </div>
 
         {/* Alert */}
         {showAlert && (
-          <Alert className="fixed top-4 right-4 w-auto animate-in fade-in slide-in-from-top-2">
+          <Alert className="fixed top-4 right-4 z-50 w-auto max-w-[90vw] animate-in fade-in slide-in-from-top-2">
             <AlertDescription>{alertMessage}</AlertDescription>
           </Alert>
         )}
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {messages.map((message) => (
-            <Card key={message.id} className={`max-w-[85%] ${message.id === 'welcome' ? 'mx-auto bg-blue-50' : 'ml-auto'}`}>
-              <CardContent className="p-4 space-y-3">
+            <Card 
+              key={message.id} 
+              className={`max-w-[95%] sm:max-w-[85%] ${message.id === 'welcome' ? 'mx-auto bg-blue-50' : 'ml-auto'}`}
+            >
+              <CardContent className="p-3 sm:p-4 space-y-3">
                 {/* Message Text */}
-                <div className="flex justify-between items-start gap-4">
-                  <p className="text-gray-800 font-medium whitespace-pre-line">
+                <div className="flex justify-between items-start gap-2 sm:gap-4">
+                  <p className="text-sm sm:text-base text-gray-800 font-medium whitespace-pre-line break-words">
                     {message.text}
                   </p>
                   {message.id !== 'welcome' && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
+                      className="flex-shrink-0"
                       onClick={() => handleCopy(message.text)}
                     >
                       <Copy className="h-4 w-4" />
@@ -240,7 +242,7 @@ export default function Home() {
 
                 {/* Language Detection Info */}
                 {message.detectedLanguage && message.id !== 'welcome' && (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs sm:text-sm text-gray-500">
                     Detected: {message.detectedLanguage} 
                     {message.confidence && ` (${(message.confidence * 100).toFixed(1)}% confidence)`}
                   </p>
@@ -249,14 +251,13 @@ export default function Home() {
                 {/* Action Buttons */}
                 {message.id !== 'welcome' && (
                   <div className="flex flex-wrap gap-2 items-center">
-                    {/* Summarize Button - only for English text over 150 chars */}
                     {message.text.length > 150 && 
                      message.detectedLanguageCode === 'en' && 
                      !message.summary && (
                       <Button
                         onClick={() => handleSummarize(message.id)}
                         disabled={isSummarizing}
-                        className='bg-slate-900 hover:bg-slate-700 text-white'
+                        className="bg-slate-900 hover:bg-slate-700 text-white text-xs sm:text-sm"
                         variant="default"
                         size="sm"
                       >
@@ -264,9 +265,8 @@ export default function Home() {
                       </Button>
                     )}
 
-                    {/* Language Selector */}
                     <select
-                      className="text-sm border rounded px-3 py-1"
+                      className="text-xs sm:text-sm border rounded px-2 py-1 sm:px-3 sm:py-1"
                       onChange={(e) => handleTranslate(message.id, e.target.value)}
                       disabled={isTranslating}
                     >
@@ -282,21 +282,21 @@ export default function Home() {
 
                 {/* Summary Display */}
                 {message.summary && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
+                  <div className="mt-3 p-2 sm:p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
                       Summary:
                     </p>
-                    <p className="text-gray-600">{message.summary}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">{message.summary}</p>
                   </div>
                 )}
 
                 {/* Translation Display */}
                 {message.translation && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
+                  <div className="mt-3 p-2 sm:p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
                       Translation ({message.targetLanguage}):
                     </p>
-                    <p className="text-gray-600">{message.translation}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">{message.translation}</p>
                   </div>
                 )}
               </CardContent>
@@ -306,9 +306,10 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t p-6">
-          <div className="flex gap-3">
+        <div className="border-t p-4 sm:p-6">
+          <div className="flex gap-2 sm:gap-3">
             <textarea
+              ref={textareaRef}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => {
@@ -318,18 +319,18 @@ export default function Home() {
                 }
               }}
               placeholder="Type your message..."
-              className="flex-1 resize-none rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              rows={2}
+              className="flex-1 resize-none rounded-xl border p-2 sm:p-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-slate-900"
+              style={{ height: textareaHeight }}
             />
             <Button
               onClick={handleSend}
               disabled={isLoading || !inputText.trim()}
-              className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-3"
+              className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-2 sm:p-3 flex-shrink-0"
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
               ) : (
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               )}
             </Button>
           </div>
