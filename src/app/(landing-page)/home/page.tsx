@@ -45,51 +45,54 @@ const LandingPage = () => {
     {
       icon: MessageSquare,
       text: "Real-time Translation",
-      color: "blue"
+      bgClass: "bg-blue-900/50 backdrop-blur-sm",
+      iconClass: "text-blue-400"
     },
     {
       icon: Brain,
       text: "Smart Summarization",
-      color: "purple"
+      bgClass: "bg-purple-900/50 backdrop-blur-sm",
+      iconClass: "text-purple-400"
     },
     {
       icon: Sparkles,
       text: "Language Detection",
-      color: "pink"
+      bgClass: "bg-pink-900/50 backdrop-blur-sm",
+      iconClass: "text-pink-400"
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-black to-purple-900 relative overflow-hidden">
-      {/* Animated background elements - hidden on small screens */}
+      {/* Animated background elements */}
       <div className="absolute inset-0 hidden sm:block">
         <motion.div
           className="absolute top-[10%] left-[10%] lg:top-20 lg:left-20"
           {...floatingAnimation}
           transition={{ delay: 0 }}
         >
-          <Brain className="w-12 h-12 md:w-16 md:h-16 text-blue-400/20" />
+          <Brain className="w-12 h-12 md:w-16 md:h-16 text-blue-400 opacity-20" />
         </motion.div>
         <motion.div
           className="absolute top-[20%] right-[15%] lg:top-40 lg:right-32"
           {...floatingAnimation}
           transition={{ delay: 0.5 }}
         >
-          <Cpu className="w-16 h-16 md:w-20 md:h-20 text-purple-400/20" />
+          <Cpu className="w-16 h-16 md:w-20 md:h-20 text-purple-400 opacity-20" />
         </motion.div>
         <motion.div
           className="absolute bottom-[20%] left-[20%] lg:bottom-32 lg:left-40"
           {...floatingAnimation}
           transition={{ delay: 1 }}
         >
-          <MessageSquare className="w-20 h-20 md:w-24 md:h-24 text-indigo-400/20" />
+          <MessageSquare className="w-20 h-20 md:w-24 md:h-24 text-indigo-400 opacity-20" />
         </motion.div>
         <motion.div
           className="absolute bottom-[25%] right-[10%] lg:bottom-40 lg:right-20"
           {...floatingAnimation}
           transition={{ delay: 1.5 }}
         >
-          <Sparkles className="w-12 h-12 md:w-16 md:h-16 text-pink-400/20" />
+          <Sparkles className="w-12 h-12 md:w-16 md:h-16 text-pink-400 opacity-20" />
         </motion.div>
       </div>
 
@@ -116,8 +119,8 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row justify-center gap-6 sm:gap-8 mb-8">
               {features.map((feature, index) => (
                 <div key={index} className="text-center px-4 sm:px-6">
-                  <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-${feature.color}-500/10 rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                    <feature.icon className={`w-6 h-6 sm:w-8 sm:h-8 text-${feature.color}-400`} />
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 ${feature.bgClass} rounded-xl flex items-center justify-center mx-auto mb-3 border border-gray-700`}>
+                    <feature.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${feature.iconClass}`} />
                   </div>
                   <p className="text-sm sm:text-base text-gray-300">{feature.text}</p>
                 </div>
