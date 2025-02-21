@@ -12,12 +12,42 @@ import "../../main.css"
 
 // Define available languages
 const languages = [
+  { code: 'ar', name: 'Arabic' },
+  { code: 'bg', name: 'Bulgarian' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'cs', name: 'Czech' },
+  { code: 'da', name: 'Danish' },
+  { code: 'de', name: 'German' },
+  { code: 'el', name: 'Greek' },
   { code: 'en', name: 'English' },
-  { code: 'pt', name: 'Portuguese' },
   { code: 'es', name: 'Spanish' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'tr', name: 'Turkish' },
+  { code: 'fi', name: 'Finnish' },
   { code: 'fr', name: 'French' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'hr', name: 'Croatian' },
+  { code: 'hu', name: 'Hungarian' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'it', name: 'Italian' },
+  { code: 'iw', name: 'Hebrew' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'lt', name: 'Lithuanian' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'no', name: 'Norwegian' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ro', name: 'Romanian' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'sk', name: 'Slovak' },
+  { code: 'sl', name: 'Slovenian' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'th', name: 'Thai' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'zh', name: 'Chinese (Simplified)' },
+  { code: 'zh-Hant', name: 'Chinese (Traditional)' }
+
 ];
 
 // Message interface
@@ -226,6 +256,7 @@ export default function Home() {
                       <Button
                         onClick={() => handleSummarize(message.id)}
                         disabled={isSummarizing}
+                        className='bg-slate-900 hover:bg-slate-700 text-white'
                         variant="default"
                         size="sm"
                       >
@@ -287,13 +318,13 @@ export default function Home() {
                 }
               }}
               placeholder="Type your message..."
-              className="flex-1 resize-none rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 resize-none rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
               rows={2}
             />
             <Button
               onClick={handleSend}
               disabled={isLoading || !inputText.trim()}
-              className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl p-3"
+              className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-3"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
