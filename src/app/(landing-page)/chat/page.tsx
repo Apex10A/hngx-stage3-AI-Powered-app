@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Copy, Volume2 } from 'lucide-react';
+import { Send, Loader2, Copy, Volume2, Sun, Moon } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -80,9 +80,40 @@ export default function Home() {
   const [alertMessage, setAlertMessage] = useState('');
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState('80px');
+  const [darkMode, setDarkMode] = useState(false);
+  const [browserSupported, setBrowserSupported] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check browser compatibility
+  useEffect(() => {
+    const checkBrowserSupport = () => {
+      const isWebkit = 'webkitSpeechRecognition' in window;
+      const isSpeechSupported = 'speechSynthesis' in window;
+      const isModernBrowser = 'Promise' in window && 'fetch' in window;
+      
+      setBrowserSupported(isModernBrowser);
+    };
+
+    checkBrowserSupport();
+  }, []);
+
+  // Dark mode initialization
+  useEffect(() => {
+    const isDark = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', String(newDarkMode));
+    document.documentElement.classList.toggle('dark');
+  };
 
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
@@ -97,7 +128,6 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = '80px';
@@ -115,6 +145,10 @@ export default function Home() {
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
+    if (!browserSupported) {
+      showAlertMessage('Your browser may not fully support all features. Please use a modern browser for the best experience.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -140,13 +174,18 @@ export default function Home() {
       setInputText('');
     } catch (error) {
       console.error('Error processing message:', error);
-      showAlertMessage('Error processing message');
+      showAlertMessage('Error processing message. Please check your browser compatibility.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleTranslate = async (messageId: string, targetLanguage: string) => {
+    if (!browserSupported) {
+      showAlertMessage('Translation may not be fully supported in your browser. Please use a modern browser.');
+      return;
+    }
+
     try {
       const message = messages.find(m => m.id === messageId);
       if (!message || !message.detectedLanguageCode) return;
@@ -168,11 +207,16 @@ export default function Home() {
       ));
     } catch (error) {
       console.error('Translation error:', error);
-      showAlertMessage('Translation failed');
+      showAlertMessage('Translation failed. Please try again or check your browser compatibility.');
     }
   };
 
   const handleSummarize = async (messageId: string) => {
+    if (!browserSupported) {
+      showAlertMessage('Summarization may not be fully supported in your browser. Please use a modern browser.');
+      return;
+    }
+
     try {
       const message = messages.find(m => m.id === messageId);
       if (!message) return;
@@ -187,7 +231,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Summarization error:', error);
-      showAlertMessage('Summarization failed');
+      showAlertMessage('Summarization failed. Please try again or check your browser compatibility.');
     }
   };
 
@@ -196,21 +240,40 @@ export default function Home() {
       await navigator.clipboard.writeText(text);
       showAlertMessage('Text copied to clipboard!');
     } catch (error) {
-      showAlertMessage('Failed to copy text');
+      showAlertMessage('Failed to copy text. This feature may not be supported in your browser.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="flex flex-col h-screen mx-auto bg-white md:max-w-4xl lg:max-w-6xl">
+    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      <main className={`flex flex-col h-screen mx-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} md:max-w-4xl lg:max-w-6xl`}>
         {/* Header */}
-        <div className="border-b px-4 sm:px-6 py-3 sm:py-4">
-          <h1 className="text-xl sm:text-2xl font-bold">AI Chat Processor</h1>
+        <div className={`border-b px-4 sm:px-6 py-3 sm:py-4 ${darkMode ? 'border-gray-700' : ''} flex justify-between items-center`}>
+          <h1 className={`text-xl sm:text-2xl ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            AI Chat Processor
+          </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleDarkMode}
+            className={darkMode ? 'text-white' : 'text-gray-900'}
+          >
+            {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
         </div>
+
+        {/* Browser Support Warning */}
+        {!browserSupported && (
+          <Alert className="m-4">
+            <AlertDescription>
+              Some features may not work properly in your current browser. For the best experience, please use a modern browser like Chrome, Firefox, or Edge.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Alert */}
         {showAlert && (
-          <Alert className="fixed top-4 right-4 z-50 w-auto max-w-[90vw] animate-in fade-in slide-in-from-top-2">
+          <Alert className={`fixed top-4 right-4 z-50 w-auto max-w-[90vw] animate-in fade-in slide-in-from-top-2 ${darkMode ? 'bg-gray-700 text-white' : ''}`}>
             <AlertDescription>{alertMessage}</AlertDescription>
           </Alert>
         )}
@@ -220,19 +283,25 @@ export default function Home() {
           {messages.map((message) => (
             <Card 
               key={message.id} 
-              className={`max-w-[95%] sm:max-w-[85%] ${message.id === 'welcome' ? 'mx-auto bg-blue-50' : 'ml-auto'}`}
+              className={`max-w-[95%] sm:max-w-[85%] ${
+                message.id === 'welcome' 
+                  ? 'mx-auto ' + (darkMode ? 'bg-blue-900' : 'bg-blue-50')
+                  : 'ml-auto'
+              } ${darkMode ? 'bg-gray-700 border-gray-600' : ''}`}
             >
               <CardContent className="p-3 sm:p-4 space-y-3">
                 {/* Message Text */}
                 <div className="flex justify-between items-start gap-2 sm:gap-4">
-                  <p className="text-sm sm:text-base text-gray-800 font-medium whitespace-pre-line break-words">
+                  <p className={`text-sm sm:text-base font-medium whitespace-pre-line break-words ${
+                    darkMode ? 'text-gray-100' : 'text-gray-800'
+                  }`}>
                     {message.text}
                   </p>
                   {message.id !== 'welcome' && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="flex-shrink-0"
+                      className={`flex-shrink-0 ${darkMode ? 'text-gray-300 hover:text-white' : ''}`}
                       onClick={() => handleCopy(message.text)}
                     >
                       <Copy className="h-4 w-4" />
@@ -242,7 +311,7 @@ export default function Home() {
 
                 {/* Language Detection Info */}
                 {message.detectedLanguage && message.id !== 'welcome' && (
-                  <p className="text-xs sm:text-sm text-gray-500">
+                  <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     Detected: {message.detectedLanguage} 
                     {message.confidence && ` (${(message.confidence * 100).toFixed(1)}% confidence)`}
                   </p>
@@ -257,7 +326,11 @@ export default function Home() {
                       <Button
                         onClick={() => handleSummarize(message.id)}
                         disabled={isSummarizing}
-                        className="bg-slate-900 hover:bg-slate-700 text-white text-xs sm:text-sm"
+                        className={`text-xs sm:text-sm ${
+                          darkMode 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                            : 'bg-slate-900 hover:bg-slate-700 text-white'
+                        }`}
                         variant="default"
                         size="sm"
                       >
@@ -266,7 +339,11 @@ export default function Home() {
                     )}
 
                     <select
-                      className="text-xs sm:text-sm border rounded px-2 py-1 sm:px-3 sm:py-1"
+                      className={`text-xs sm:text-sm border rounded px-2 py-1 sm:px-3 sm:py-1 ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white' 
+                          : 'bg-white text-gray-900'
+                      }`}
                       onChange={(e) => handleTranslate(message.id, e.target.value)}
                       disabled={isTranslating}
                     >
@@ -282,31 +359,51 @@ export default function Home() {
 
                 {/* Summary Display */}
                 {message.summary && (
-                  <div className="mt-3 p-2 sm:p-3 bg-gray-50 rounded-lg border">
-                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  <div className={`mt-3 p-2 sm:p-3 rounded-lg border ${
+                    darkMode 
+                      ? 'bg-gray-800 border-gray-600' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <p className={`text-xs sm:text-sm font-medium mb-2 ${
+                      darkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       Summary:
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">{message.summary}</p>
+                    <p className={`text-xs sm:text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      {message.summary}
+                    </p>
                   </div>
                 )}
 
                 {/* Translation Display */}
                 {message.translation && (
-                  <div className="mt-3 p-2 sm:p-3 bg-gray-50 rounded-lg border">
-                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  <div className={`mt-3 p-2 sm:p-3 rounded-lg border ${
+                    darkMode 
+                      ? 'bg-gray-800 border-gray-600' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <p className={`text-xs sm:text-sm font-medium mb-2 ${
+                      darkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       Translation ({message.targetLanguage}):
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">{message.translation}</p>
+                    <p className={`text-xs sm:text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      {message.translation}
+                    </p>
                   </div>
                 )}
-              </CardContent>
+                </CardContent>
             </Card>
           ))}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="border-t p-4 sm:p-6">
+        <div className={`border-t p-4 sm:p-6 ${darkMode ? 'border-gray-700' : ''}`}>
           <div className="flex gap-2 sm:gap-3">
             <textarea
               ref={textareaRef}
@@ -319,13 +416,21 @@ export default function Home() {
                 }
               }}
               placeholder="Type your message..."
-              className="flex-1 resize-none rounded-xl border p-2 sm:p-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className={`flex-1 resize-none rounded-xl border p-2 sm:p-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white text-gray-900'
+              }`}
               style={{ height: textareaHeight }}
             />
             <Button
               onClick={handleSend}
               disabled={isLoading || !inputText.trim()}
-              className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-2 sm:p-3 flex-shrink-0"
+              className={`rounded-xl p-2 sm:p-3 flex-shrink-0 ${
+                darkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-slate-900 hover:bg-slate-700 text-white'
+              }`}
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
