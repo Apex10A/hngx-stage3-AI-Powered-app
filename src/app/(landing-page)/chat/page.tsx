@@ -250,7 +250,7 @@ export default function Home() {
         {/* Header */}
         <div className={`border-b px-4 sm:px-6 py-3 sm:py-4 ${darkMode ? 'border-gray-700' : ''} flex justify-between items-center`}>
           <h1 className={`text-xl sm:text-2xl ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            AI Chat Processor
+            ChatClaude 
           </h1>
           <Button
             variant="ghost"
